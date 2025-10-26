@@ -1,6 +1,6 @@
 var express = require("express");
 var router = express.Router();
-const db = require("../db");
+const db = require("../db.js");
 const mysql = require("mysql2/promise");
 const dayjs = require("dayjs");
 
@@ -17,7 +17,7 @@ router.get('/', function (req, res, next) {
 
 
 // const db = mysql.createPool({
-//   host: dbb.DB_HOST,
+//   host: 'localhost',
 //   user: "root",
 //   password: "jaggi@dev",
 //   database: "graminbus",
