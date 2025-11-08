@@ -179,6 +179,31 @@ router.post("/generate-trip-stoppages", async (req, res) => {
   }
 });
 
+router.get("/bus-location/:busId", async (req, res) => {
+  const { busId } = req.params;
+  const [rows] = await db.query(
+    `SELECT latitude, longitude, last_updated 
+     FROM bus_locations 
+     WHERE bus_id = ?`, 
+     [busId]
+  );
+
+  if (!rows.length) return res.status(404).json({ error: "Bus not found" });
+  res.json(rows[0]);
+});
+
+
+router.get('/areas', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT name, lat, lng FROM stoppages');
+    res.json(rows);
+    // console.log(rows);
+    
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching areas");
+  }
+});
 
 
 
