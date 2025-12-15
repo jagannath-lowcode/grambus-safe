@@ -179,25 +179,46 @@ router.post("/generate-trip-stoppages", async (req, res) => {
   }
 });
 
-router.get("/bus-location/:busId", async (req, res) => {
-  const { busId } = req.params;
-  const [rows] = await db.query(
-    `SELECT latitude, longitude, last_updated 
+
+// router.get("/bus-location/:busId", async (req, res) => {
+//   const { busId } = req.params;
+//   const [rows] = await db.query(
+//     `SELECT latitude, longitude, last_updated 
+//      FROM bus_locations 
+//      WHERE bus_id = ?`, 
+//      [busId]
+//   );
+
+//   if (!rows.length) return res.status(404).json({ error: "Bus not found" });
+//   res.json(rows[0]);
+// });
+
+router.get("/bus-location/:bus_id", async (req, res) => {
+  try {
+    const { bus_id } = req.params;
+    const [rows] = await db.query(
+    `SELECT latitude, longitude ,rotation , current_stop_id, upcoming_stop_id
      FROM bus_locations 
      WHERE bus_id = ?`, 
-     [busId]
+     [bus_id]
   );
 
-  if (!rows.length) return res.status(404).json({ error: "Bus not found" });
-  res.json(rows[0]);
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "Bus not broadcasting" });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
+
 
 
 router.get('/areas', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT name, lat, lng FROM stoppages');
+    const [rows] = await db.query('SELECT name, latitude, longitude FROM stoppages');
     res.json(rows);
-    // console.log(rows);
     
   } catch (err) {
     console.error(err);
@@ -205,6 +226,42 @@ router.get('/areas', async (req, res) => {
   }
 });
 
+router.get('/driver-info', async ( req, res)=>{
+   try {
+    let bus_id = req.params;
+    const [rows] = await db.query('SELECT * FROM drivers where bus_id = ? ' ,[bus_id]);
+    console.log(rows);
+    
+    res.json(rows);
+    
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching areas");
+  }
+})
 
+router.post('/login', async (req, res) => {
+  const { phone, password } = req.body;
+  if (!phone || !password) return res.status(400).json({ error: 'phone & password required' });
+
+  try {
+    const [rows] = await db.query('SELECT * FROM drivers WHERE phone = ? LIMIT 1', [phone]);
+    if (!rows.length) return res.status(401).json({ error: 'invalid credentials' });
+    const driver = rows[0];
+    const ok = await bcrypt.compare(password, driver.password_hash);
+    if (!ok) return res.status(401).json({ error: 'invalid credentials' });
+    const token = signToken({ driverId: driver.id });
+    res.json({
+      success: true,
+      token,
+      driver: {
+        driverId: driver.id,
+        driverName: driver.driver_name,
+        assignedBusId: driver.assigned_bus_id
+      }
+    });
+  } catch (e) { console.error(e); res.status(500).json({error:'server error'}); }
+  finally { conn.release(); }
+});
 
 module.exports = router;
