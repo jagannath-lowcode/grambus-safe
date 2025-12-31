@@ -27,56 +27,278 @@ router.get('/', function (req, res, next) {
 // const AVG_MIN_PER_STOP = 4;
 
 
-router.get("/next-buses", async (req, res) => {
-  try {
-    const { fromStopId, toStopId, limit = 5 } = req.query;
+// router.get("/next-buses", async (req, res) => {
+//   try {
+//     const { fromStopId, toStopId, limit = 5 } = req.query;
 
-    if (!fromStopId || !toStopId) {
-      return res.status(400).json({ error: "fromStopId and toStopId are required" });
-    }
+//     if (!fromStopId || !toStopId) {
+//       return res.status(400).json({ error: "fromStopId and toStopId are required" });
+//     }
 
-    const [rows] = await db.query(
-      `
-      SELECT 
-        t.trip_id,
-        t.bus_id,
-        ts_from.stop_order AS from_order,
-        ts_to.stop_order   AS to_order,
-        ts_current.stop_order AS current_order,
-        bl.current_stop_id,
-        bl.last_updated
-      FROM trips t
-      JOIN trip_stoppages ts_from    ON ts_from.trip_id   = t.trip_id AND ts_from.stop_id = ?
-      JOIN trip_stoppages ts_to      ON ts_to.trip_id     = t.trip_id AND ts_to.stop_id   = ?
-      JOIN bus_locations bl          ON bl.bus_id         = t.bus_id
-      JOIN trip_stoppages ts_current ON ts_current.trip_id = t.trip_id 
-                                  AND ts_current.stop_id = bl.current_stop_id
-      WHERE 
-        ts_from.stop_order < ts_to.stop_order -- ✅ only forward direction
-        AND ts_current.stop_order <= ts_from.stop_order -- ✅ bus hasn't passed fromStop
-      ORDER BY ts_from.stop_order ASC
-      LIMIT ?
-      `,
-      [fromStopId, toStopId, Number(limit)]
-    );
+//     const [rows] = await db.query(
+//       `
+//       SELECT 
+//         t.trip_id,
+//         t.bus_id,
+//         ts_from.stop_order AS from_order,
+//         ts_to.stop_order   AS to_order,
+//         ts_current.stop_order AS current_order,
+//         bl.current_stop_id,
+//         bl.last_updated
+//       FROM trips t
+//       JOIN trip_stoppages ts_from    ON ts_from.trip_id   = t.trip_id AND ts_from.stop_id = ?
+//       JOIN trip_stoppages ts_to      ON ts_to.trip_id     = t.trip_id AND ts_to.stop_id   = ?
+//       JOIN bus_locations bl          ON bl.bus_id         = t.bus_id
+//       JOIN trip_stoppages ts_current ON ts_current.trip_id = t.trip_id 
+//                                   AND ts_current.stop_id = bl.current_stop_id
+//       WHERE 
+//         ts_from.stop_order < ts_to.stop_order -- ✅ only forward direction
+//         AND ts_current.stop_order <= ts_from.stop_order -- ✅ bus hasn't passed fromStop
+//       ORDER BY ts_from.stop_order ASC
+//       LIMIT ?
+//       `,
+//       [fromStopId, toStopId, Number(limit)]
+//     );
 
-    res.json({
-      count: rows.length,
-      trips: rows.map(r => ({
-        tripId: r.trip_id,
-        busId: r.bus_id,
-        currentStopId: r.current_stop_id,
-        currentOrder: r.current_order,
-        fromOrder: r.from_order,
-        toOrder: r.to_order,
-        lastUpdated: r.last_updated,
-      })),
-    });
-  } catch (error) {
-    console.error("Error fetching next buses:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//     console.log(rows);
+
+//     res.json({
+//       count: rows.length,
+//       trips: rows.map(r => ({
+//         tripId: r.trip_id,
+//         busId: r.bus_id,
+//         currentStopId: r.current_stop_id,
+//         currentOrder: r.current_order,
+//         fromOrder: r.from_order,
+//         toOrder: r.to_order,
+//         lastUpdated: r.last_updated,
+//       })),
+//     });
+//   } catch (error) {
+//     console.error("Error fetching next buses:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+// router.get("/next-buses", async (req, res) => {
+//   try {
+//     const { fromStopId, toStopId, limit = 5 } = req.query;
+
+//     if (!fromStopId || !toStopId) {
+//       return res.status(400).json({ error: "fromStopId and toStopId are required" });
+//     }
+
+//     const [rows] = await db.query(
+//       `
+//       SELECT 
+//           t.trip_id,
+//           t.bus_id,
+
+//           ts_from.stop_order    AS from_order,
+//           ts_to.stop_order      AS to_order,
+//           ts_current.stop_order AS current_order,
+
+//           bl.current_stop_id,
+//           bl.upcoming_stop_id,
+//           bl.latitude  AS bus_lat,
+//           bl.longitude AS bus_lng,
+//           bl.last_updated
+
+//         FROM trips t
+//         JOIN trip_stoppages ts_from 
+//           ON ts_from.trip_id = t.trip_id AND ts_from.stop_id = ?
+//         JOIN trip_stoppages ts_to   
+//           ON ts_to.trip_id   = t.trip_id AND ts_to.stop_id   = ?
+//         JOIN bus_locations bl       
+//           ON bl.bus_id       = t.bus_id
+//         JOIN trip_stoppages ts_current 
+//           ON ts_current.trip_id = t.trip_id 
+//         AND ts_current.stop_id = bl.current_stop_id
+//         WHERE 
+//           ts_from.stop_order < ts_to.stop_order
+//           AND ts_current.stop_order <= ts_from.stop_order
+//         LIMIT ?
+//       `,
+//       [fromStopId, toStopId, Number(limit)]
+//     );
+
+//     const results = [];
+
+
+//     for (const r of rows) {
+//       // fetch remaining stops for this trip
+//       // calculate distance
+//       // calculate stopsRemaining
+//       // calculate ETA
+//       // push to results
+//       const [stops] = await db.query(`
+//             SELECT 
+//               ts.stop_order,
+//               s.stop_id,
+//               s.latitude,
+//               s.longitude
+//             FROM trip_stoppages ts
+//             JOIN stoppages s ON s.stop_id = ts.stop_id
+//             WHERE 
+//               ts.trip_id = ?
+//               -- Start from the bus's current stop
+//               AND ts.stop_order >= (
+//                 SELECT stop_order 
+//                 FROM trip_stoppages 
+//                 WHERE trip_id = ? AND stop_id = ? 
+//               )
+//               -- End at the user's destination stop
+//               AND ts.stop_order <= (
+//                 SELECT stop_order 
+//                 FROM trip_stoppages 
+//                 WHERE trip_id = ? AND stop_id = ? -- Replace with User's Stop ID
+//               )
+//             ORDER BY ts.stop_order ASC
+//             `, [r.trip_id, r.trip_id, r.upcoming_stop_id, r.trip_id, fromStopId]
+//       );
+
+
+//       const validStops = stops.filter(
+//         s => s.latitude !== null && s.longitude !== null
+//       );
+
+//       function haversineMeters(lat1, lon1, lat2, lon2) {
+//         const R = 6371000; // meters
+//         const toRad = d => (d * Math.PI) / 180;
+
+//         const dLat = toRad(lat2 - lat1);
+//         const dLon = toRad(lon2 - lon1);
+
+//         const a =
+//           Math.sin(dLat / 2) ** 2 +
+//           Math.cos(toRad(lat1)) *
+//           Math.cos(toRad(lat2)) *
+//           Math.sin(dLon / 2) ** 2;
+
+//         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//         return R * c;
+//       }
+
+//       let totalMeters = 0;
+
+//       // distance from bus current GPS to first stop
+//       const firstStop = validStops[0];
+
+//       if (firstStop) {
+//         totalMeters += haversineMeters(
+//           r.bus_lat,
+//           r.bus_lng,
+//           firstStop.latitude,
+//           firstStop.longitude
+//         );
+//       }
+
+//       for (let i = 0; i < validStops.length - 1; i++) {
+//         const a = validStops[i];
+//         const b = validStops[i + 1];
+
+//         totalMeters += haversineMeters(
+//           a.latitude,
+//           a.longitude,
+//           b.latitude,
+//           b.longitude
+//         );
+//       }
+
+//       if (!isFinite(totalMeters) || totalMeters <= 0) {
+//         totalMeters = null; // force ETA fallback later
+//       }
+//       console.log({ busId: r.bus_id, totalMeters, stopCount: validStops.length });
+
+//       // -------------eta speed-----------
+
+//       function computeInstantSpeed(prev, curr) {
+//         if (!prev) return null;
+
+//         const dist = haversineMeters(
+//           prev.lat, prev.lng,
+//           curr.lat, curr.lng
+//         );
+
+//         const timeSec =
+//           (new Date(curr.time) - new Date(prev.time)) / 1000;
+
+//         if (timeSec <= 0) return null;
+
+//         const speed = dist / timeSec; // m/s
+
+//         // reject nonsense
+//         if (speed < 0.5 || speed > 35) return null;
+
+//         return speed;
+//       }
+
+//       function smoothSpeed(prevAvg, newSpeed) {
+//         if (!newSpeed) return prevAvg;
+//         if (!prevAvg) return newSpeed;
+
+//         return prevAvg * 0.7 + newSpeed * 0.3;
+//       }
+
+//       const FALLBACK_SPEED_MPS = 6; // ~22 km/h (rural bus)
+
+//       function computeETA(remainingMeters, avgSpeedMps) {
+//         if (!remainingMeters) return null;
+
+//         const speed = avgSpeedMps || FALLBACK_SPEED_MPS;
+
+//         const etaSec = remainingMeters / speed;
+
+//         const etaMin = Math.max(
+//           Math.round(etaSec / 60),
+//           1
+//         );
+
+//         return etaMin;
+//       }
+//       function etaConfidence(avgSpeedMps, liveState) {
+//         if (liveState !== "live") return "low";
+//         if (!avgSpeedMps) return "medium";
+//         return "high";
+//       }
+
+
+//       const instantSpeed = computeInstantSpeed(prevLoc, currLoc);
+//       const avgSpeed = smoothSpeed(bus.avgSpeed, instantSpeed);
+
+//       bus.avgSpeed = avgSpeed; // persist
+
+//       const etaMinutes = computeETA(
+//         remainingMeters,
+//         avgSpeed
+//       );
+
+//       const confidence = etaConfidence(avgSpeed, liveState);
+
+//     }
+
+
+
+
+
+//     res.json({
+//       count: rows.length,
+//       trips: rows.map(r => ({
+//         tripId: r.trip_id,
+//         busId: r.bus_id,
+//         currentStopId: r.current_stop_id,
+//         currentOrder: r.current_order,
+//         fromOrder: r.from_order,
+//         toOrder: r.to_order,
+//         lastUpdated: r.last_updated,
+//       })),
+//     });
+//   } catch (error) {
+//     console.error("Error fetching next buses:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
 
 
 
@@ -197,11 +419,11 @@ router.get("/bus-location/:bus_id", async (req, res) => {
   try {
     const { bus_id } = req.params;
     const [rows] = await db.query(
-    `SELECT latitude, longitude ,rotation , current_stop_id, upcoming_stop_id
+      `SELECT latitude, longitude ,rotation , current_stop_id, upcoming_stop_id
      FROM bus_locations 
-     WHERE bus_id = ?`, 
-     [bus_id]
-  );
+     WHERE bus_id = ?`,
+      [bus_id]
+    );
 
     if (rows.length === 0) {
       return res.json({ success: false, message: "Bus not broadcasting" });
@@ -219,24 +441,24 @@ router.get('/areas', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT name, latitude, longitude FROM stoppages');
     res.json(rows);
-    
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching areas");
   }
 });
 
-router.get('/driver-info', async ( req, res)=>{
-   try {
+router.get('/driver-info', async (req, res) => {
+  try {
     let bus_id = req.params;
-    const [rows] = await db.query('SELECT * FROM drivers where bus_id = ? ' ,[bus_id]);
+    const [rows] = await db.query('SELECT * FROM drivers where bus_id = ? ', [bus_id]);
     console.log(rows);
-    
+
     res.json(rows);
-    
+
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching areas");
+    res.status(500).send("Error fetching drivers");
   }
 })
 
@@ -260,7 +482,7 @@ router.post('/login', async (req, res) => {
         assignedBusId: driver.assigned_bus_id
       }
     });
-  } catch (e) { console.error(e); res.status(500).json({error:'server error'}); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'server error' }); }
   finally { conn.release(); }
 });
 
